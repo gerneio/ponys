@@ -16,19 +16,17 @@ export default class {
 			template = templateElement;
 		}
 		template = template.content;
-		url = new URL(url, location.href);
+		url = new URL(url, location.href.startsWith('about:') ? document.baseURI : location.href);
 
 		let script = template.querySelector('script[setup]') || template.querySelector('script');
 		if (script && (!script.hasAttribute("setup") || script.type != "module")) console.warn("setup & type=module attributes expected");
+		let moduleScript = script?.text?.replace(
+			/(import|from)\s*("|')(\.{0,2}\/.*?[^\\])\2/g,  // relative imports
+			(match, keyword, quote, path) => keyword + quote + new URL(path, url) + quote
+		);
+		let blobUrl = URL.createObjectURL(new Blob([moduleScript], { type: 'text/javascript' }));
 
-		return import(
-			'data:text/javascript;base64,' + btoa(
-				script?.text?.replace(
-					/(import|from)\s*("|')(\.{0,2}\/.*?[^\\])\2/g,  // relative imports
-					(match, keyword, quote, path) => keyword + quote + new URL(path, url) + quote
-				)
-			)
-		).then(module => {
+		return import(`${blobUrl}#tag=${encodeURIComponent(name)}`).then(module => {
 			script?.remove();
 			class BaseComponent extends (module.default?.prototype instanceof HTMLElement ? module.default : HTMLElement) { }
 			for (let prop in module) {
@@ -51,7 +49,7 @@ export default class {
 			}
 			customElements.define(name, Component, options);
 			return Component;
-		});
+		}).finally(_ => URL.revokeObjectURL(blobUrl));
 	}
 
 	static defineAll(container = document)
