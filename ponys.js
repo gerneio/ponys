@@ -39,10 +39,7 @@ export default class {
 					super();
 					let root = this;
 					try { root = root.attachShadow({mode: 'open'}); } catch {}
-					this.$ = selector => root.querySelector(selector);
-					this.$$ = selector => root.querySelectorAll(selector);
 					let content = template.cloneNode(true);
-					propagateHost(this, content);
 					root.append(content);
 					this.init?.();
 				}
@@ -77,15 +74,4 @@ export default class {
 			.then(text => this.define(name, text, options, url));
 	}
 
-}
-
-
-function propagateHost(host, parentElement)
-{
-	for (let element of parentElement.children) {
-		element.host = host;
-		element.$ = host.$;
-		element.$$ = host.$$;
-		propagateHost(host, element);
-	}
 }
