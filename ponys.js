@@ -7,7 +7,7 @@
 
 export default class {
 
-	static define(name, template, options, url = '')
+	static define(name, template, options)
 	{
 		if (customElements.get(name)) return Promise.reject(Error(`Component '${name}' already registered`));
 		if (!template.content) {
@@ -16,15 +16,10 @@ export default class {
 			template = templateElement;
 		}
 		template = template.content;
-		url = new URL(url, location.href.startsWith('about:') ? document.baseURI : location.href);
 
 		let script = template.querySelector('script[setup]') || template.querySelector('script');
 		if (script && (!script.hasAttribute("setup") || script.type != "module")) console.warn("setup & type=module attributes expected");
-		let moduleScript = script?.text?.replace(
-			/(import|from)\s*("|')(\.{0,2}\/.*?[^\\])\2/g,  // relative imports
-			(match, keyword, quote, path) => keyword + quote + new URL(path, url) + quote
-		);
-		let blobUrl = URL.createObjectURL(new Blob([moduleScript], { type: 'text/javascript' }));
+		let blobUrl = URL.createObjectURL(new Blob([script?.text], { type: 'text/javascript' }));
 
 		return import(`${blobUrl}#tag=${encodeURIComponent(name)}`).then(module => {
 			script?.remove();
@@ -71,7 +66,7 @@ export default class {
 	{
 		return fetch(url)
 			.then(response => response.ok ? response.text() : Promise.reject(Error(url)))
-			.then(text => this.define(name, text, options, url));
+			.then(text => this.define(name, text, options));
 	}
 
 }
